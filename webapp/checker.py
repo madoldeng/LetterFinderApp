@@ -1,4 +1,4 @@
-from flask import session
+from flask import session, render_template
 from functools import wraps
 
 

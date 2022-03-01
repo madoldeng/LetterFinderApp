@@ -8,6 +8,8 @@ from checker import check_logged_in
 
 from time import sleep
 
+from threading import Thread
+
 app = Flask(__name__)
 
 
@@ -17,8 +19,8 @@ app.config['dbconfig'] = {'host': '127.0.0.1',
                           'database': 'vsearchlogDB', }
 
 
-@app.route('/login')
-def do_login() -> str:
+@app.route('/login', methods=['GET', 'POST'])
+def login() -> str:
     session['logged_in'] = True
     return 'You are now logged in.'
 
@@ -26,15 +28,15 @@ def do_login() -> str:
 @app.route('/logout')
 def do_logout() -> str:
     session.pop('logged_in')
-    return 'You are now logged out.'
+    return 'You are not logged out'
 
 
 @app.route('/search4', methods=['POST'])
 def do_search() -> 'html':
 
     @copy_current_request_context
-    def log_request(req: 'flask_request', res:str) -> None:
-        sleep(15) # This makes log_request really slow...
+    def log_request(req: 'flask_request', res: str) -> None:
+        sleep(15)  # This makes log_request really slow...
         try:
             with UseDatabase(app.config['dbconfig']) as cursor:
                 _insert = """insert into log
@@ -56,12 +58,13 @@ def do_search() -> 'html':
             print('Something went wrong:', str(err))
         return 'Error'
 
+    title = 'Here are your results: '
     phrase = request.form['phrase']
     letters = request.form['letters']
-    title = 'Here are your results: '
     results = str(search4letters(phrase, letters))
     try:
-        log_request(request, results)
+        t = Thread(target=log_request, args=(request, results))
+        t.start()
     except Exception as err:
         print('***** Logging failed with this error:', str(err))
     return render_template('results.html',
